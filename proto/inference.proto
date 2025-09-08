@@ -1,0 +1,50 @@
+syntax = "proto3";
+package inference;
+
+option go_package = "inferencepb";
+
+import "google/protobuf/struct.proto";
+
+message DBQuery {
+  string sql    = 1;
+  repeated string params = 2;
+  string token  = 3;
+}
+
+message InferenceRequest {
+  // Target model
+  string model = 1;
+
+  // Exactly one of these must be set.
+  oneof data {
+    // Raw binary blob (e.g. pickled / msgpack)
+    bytes raw               = 2;
+    // Parsed JSON-like object
+    google.protobuf.Struct struct_data = 4;
+  }
+
+  // Optional parameters
+  string level  = 3;
+  bool   stream = 5;
+
+  // Streaming/session metadata
+  string session_id = 10;
+  int32  chunk_id   = 11;
+  bool   last_chunk = 12;
+
+  // Optional DB query evaluated server-side
+  DBQuery db_query  = 20;
+}
+
+message InferenceResponse {
+  oneof data {
+    bytes raw = 1;
+    google.protobuf.Struct struct_data = 4;
+  }
+
+  string error     = 2;
+  string meta_json = 3; 
+}
+service Inference {
+  rpc Infer (stream InferenceRequest) returns (stream InferenceResponse);
+}

@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package registry;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "inference.proto";
+
+/* ───────── Batching policy ───────── */
+message BatchingPolicy {
+  uint32 batch_size = 1;
+  uint32 timeout_ms = 2;
+}
+
+/* ───── Replica-level load snapshot ───── */
+message HeartbeatSnapshot {
+  uint32 queue_depth = 1;
+  uint32 in_flight = 2;
+  double ewma_latency_ms = 3;
+  uint64 queued_work_units = 4;
+  double processing_spu = 5;
+  uint32 gpu_id = 6;
+  uint32 gpu_total_mb = 7;
+  uint32 gpu_free_mb = 8;
+}
+
+/* ───── Worker registration & heartbeat ───── */
+message RegisterRequest {
+  string  worker_id = 1;
+  repeated ModelInfo models = 2;
+  uint32  serve_port = 3;
+  string  advertise_host = 4;
+  bool can_infer = 5;
+  bool can_train = 6;
+}
+
+message HeartbeatRequest {
+  string worker_id                  = 1;
+  repeated HeartbeatSnapshot stats  = 2;
+}
+
+/* ───── Model catalogue ───── */
+message ModelInfo {
+  string model_name = 1;
+  string worker_id  = 2;
+  string endpoint   = 3;
+  string gpu_id     = 4;
+  BatchingPolicy batch = 5;
+}
+
+message ListModelsResponse {
+  repeated ModelInfo models = 1;
+}
+
+/* ───── Worker-side shutdown ───── */
+message ShutdownModelRequest {
+  string worker_id  = 1;
+  string model_name = 2;
+}
+
+message ShutdownGPURequest {
+  string worker_id = 1;
+  string gpu_id    = 2;
+}
+
+/* ───── Master statistics ───── */
+message StatsResponse {
+  string json = 1;
+}
+
+/* ───── Services ───── */
+service WorkerAdmin {
+  rpc Register  (RegisterRequest)  returns (google.protobuf.Empty);
+  rpc Heartbeat (HeartbeatRequest) returns (google.protobuf.Empty);
+}
+
+service WorkerControl {
+  rpc Shutdown      (google.protobuf.Empty)   returns (google.protobuf.Empty);
+  rpc ShutdownModel (ShutdownModelRequest)    returns (google.protobuf.Empty);
+  rpc ShutdownGPU   (ShutdownGPURequest)      returns (google.protobuf.Empty);
+}
+
+service WorkerForward {
+  rpc Forward (stream inference.InferenceRequest)
+        returns (stream inference.InferenceResponse);
+}
+
+service MasterStats {
+  rpc GetStats   (google.protobuf.Empty)   returns (StatsResponse);
+  rpc ListModels (google.protobuf.Empty)   returns (ListModelsResponse);
+}
+
+/* ───── Metrics ───── */
+
+
+message GpuMetricsData {
+  google.protobuf.Timestamp timestamp = 1;
+  string uuid = 2;
+  string worker_id = 3;
+  uint32 gpu_index = 4;
+  string gpu_name = 5;
+  uint32 util_gpu = 6;
+  uint32 util_mem = 7;
+  uint32 active_jobs = 8;
+  repeated string models_hosted = 9; 
+}
+
+message GpuMetrcsStat {
+  string stat_json = 1;
+}
+
+message GpuMetrcsRequest {
+  repeated GpuMetricsData items = 1;
+  string worker_load_snapshot = 2;
+  string worker_id = 3;
+}
+
+service GpuMetrics {
+  rpc AddData (GpuMetrcsRequest) returns (google.protobuf.Empty);
+}
