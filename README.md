@@ -303,3 +303,15 @@ for prog in stub.StartJob(req):
 | **Soft lease**     | Temporary job reservation on a (worker, gpu)                        |
 | **Mesh**           | Citadel’s overlay for distributed routing, telemetry, orchestration |
 
+---
+
+## 📝 License
+
+**Citadel Triton Mesh** is released under a permissive license for non-commercial and small-scale commercial use.
+
+> **License Condition**:
+> If your usage of Citadel Triton Mesh results in **more than USD \$1,000,000 in annual revenue**, you are required to **purchase a commercial license**.
+
+To inquire about enterprise licensing or support, please contact the Citadel team.
+
+
